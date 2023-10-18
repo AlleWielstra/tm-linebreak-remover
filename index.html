@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Remove Linebreaks</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f7f7f7;
+        }
+        #columnSelector {
+            width: 100%;
+            padding: 10px;
+        }
+        #upload,
+        #columnSelector,
+        button {
+            margin-bottom: 15px;
+        }
+        button {
+            padding: 10px;
+            font-size: 16px;
+            background-color: #FFBC03;
+            color: black;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #ff9203;
+        }
+        button:disabled {
+            background-color: grey;
+        }
+        .result {
+            margin-top: 20px;
+            font-size: 20px;
+            color: #333;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.16.8/xlsx.full.min.js"></script>
+</head>
+
+<body>
+    <input type="file" id="upload" onchange="handleFile()" />
+    <div id="select-con" style="display: none;">
+        Select the column to remove linebreaks from:
+        <select id="columnSelector"></select>
+    </div>
+    <button onclick="processExcelData()" disabled id="process_button">Process Excel Data</button>
+    <div id="DownloadLinkCont"></div>
+
+    <script>
+        let workbook, selectedSheet, currentFilename;
+
+        function handleFile() {
+            const input = document.getElementById('upload');
+            const file = input.files[0];
+            currentFilename = file.name;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = e.target.result;
+                workbook = XLSX.read(data, { type: 'binary' });
+                selectedSheet = workbook.Sheets[workbook.SheetNames[0]];
+                populateColumnSelector();
+            };
+            reader.readAsBinaryString(file);
+        }
+
+        function populateColumnSelector() {
+            const columnSelector = document.getElementById('columnSelector');
+            for (let cell in selectedSheet) {
+                if (cell[1] === '1' && cell !== '!ref' && !columnSelector.options.namedItem(cell[0])) {
+                    let option = document.createElement("option");
+                    option.value = cell[0];
+                    option.textContent = selectedSheet[cell].v;
+                    columnSelector.appendChild(option);
+                }
+            }
+            document.getElementById('select-con').style.display = '';
+            document.getElementById('process_button').disabled = false;
+        }
+
+        function processExcelData() {
+            const column = document.getElementById('columnSelector').value;
+            const dataAoa = XLSX.utils.sheet_to_json(selectedSheet, { header: 1, blankrows: false });
+
+            for (let rowIndex = 0; rowIndex < dataAoa.length; rowIndex++) {
+                if (dataAoa[rowIndex][column.charCodeAt(0) - 65]) {
+                    dataAoa[rowIndex][column.charCodeAt(0) - 65] = dataAoa[rowIndex][column.charCodeAt(0) - 65].replace(/(\r\n|\n|\r)/gm, " ");
+                }
+            }
+
+            let newWb = XLSX.utils.book_new();
+            const newWs = XLSX.utils.aoa_to_sheet(dataAoa);
+
+            XLSX.utils.book_append_sheet(newWb, newWs, "Processed Data");
+            saveToFile(newWb);
+        }
+
+        function saveToFile(newWb) {
+            const wbout = XLSX.write(newWb, { bookType: 'xlsx', type: 'binary' });
+            const blob = new Blob([s2ab(wbout)], { type: 'application/octet-stream' });
+            const downloadLinkCont = document.getElementById('DownloadLinkCont');
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = getNewFileName();
+            a.textContent = 'Download Processed File';
+            downloadLinkCont.appendChild(a);
+        }
+
+        function getNewFileName() {
+            const timestamp = Math.floor(Date.now() / 1000);
+            let splitFilename = currentFilename.split('.');
+            return splitFilename[0] + " - processed - " + timestamp + ".xlsx";
+        }
+
+        function s2ab(s) {
+            const buf = new ArrayBuffer(s.length);
+            const view = new Uint8Array(buf);
+            for (let i = 0; i < s.length; i++) view[i] = s.charCodeAt(i) & 0xFF;
+            return buf;
+        }
+    </script>
+</body>
+
+</html>
