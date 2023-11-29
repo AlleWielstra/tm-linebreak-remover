@@ -81,22 +81,30 @@
             document.getElementById('process_button').disabled = false;
         }
 
-        function processExcelData() {
-            const column = document.getElementById('columnSelector').value;
-            const dataAoa = XLSX.utils.sheet_to_json(selectedSheet, { header: 1, blankrows: false });
+function processExcelData() {
+    const column = document.getElementById('columnSelector').value;
+    const dataAoa = XLSX.utils.sheet_to_json(selectedSheet, { header: 1, blankrows: false });
 
-            for (let rowIndex = 0; rowIndex < dataAoa.length; rowIndex++) {
-                if (dataAoa[rowIndex][column.charCodeAt(0) - 65]) {
-                    dataAoa[rowIndex][column.charCodeAt(0) - 65] = dataAoa[rowIndex][column.charCodeAt(0) - 65].replace(/(\r\n|\n|\r)/gm, " ");
-                }
-            }
+    for (let rowIndex = 0; rowIndex < dataAoa.length; rowIndex++) {
+        if (dataAoa[rowIndex][column.charCodeAt(0) - 65]) {
+            // Replace tabs, line breaks, and carriage returns with a single space
+            let cellData = dataAoa[rowIndex][column.charCodeAt(0) - 65];
+            cellData = cellData.replace(/(\r\n|\n|\r|\t)/gm, " ");
 
-            let newWb = XLSX.utils.book_new();
-            const newWs = XLSX.utils.aoa_to_sheet(dataAoa);
+            // Replace sequential spaces with a single space
+            cellData = cellData.replace(/\s+/g, ' ');
 
-            XLSX.utils.book_append_sheet(newWb, newWs, "Processed Data");
-            saveToFile(newWb);
+            // Update the cell data
+            dataAoa[rowIndex][column.charCodeAt(0) - 65] = cellData;
         }
+    }
+
+    let newWb = XLSX.utils.book_new();
+    const newWs = XLSX.utils.aoa_to_sheet(dataAoa);
+
+    XLSX.utils.book_append_sheet(newWb, newWs, "Processed Data");
+    saveToFile(newWb);
+}
 
         function saveToFile(newWb) {
             const wbout = XLSX.write(newWb, { bookType: 'xlsx', type: 'binary' });
